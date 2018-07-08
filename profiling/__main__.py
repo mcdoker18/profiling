@@ -511,6 +511,12 @@ onetime_profiler_options = Params([
         '-d', '--dump', 'dump_filename', type=click.Path(writable=True),
         help='Profiling result dump filename.'),
 ])
+flamegraph_options = Params([
+    click.option(
+        '-F', '--flamegraph', 'flamegraph_filename',
+        type=click.Path(writable=True), help='Profiling result '
+                                             'flamegraph filename.'),
+])
 live_profiler_options = Params([
     click.option(
         '-i', '--interval', type=float,
@@ -536,7 +542,7 @@ live_profiler_options = Params([
 
 def __profile__(filename, code, globals_, profiler_factory,
                 pickle_protocol=remote.PICKLE_PROTOCOL, dump_filename=None,
-                mono=False):
+                mono=False, flamegraph_filename=None):
     frame = sys._getframe()
     profiler = profiler_factory(base_frame=frame, base_code=code)
     profiler.start()
@@ -550,17 +556,25 @@ def __profile__(filename, code, globals_, profiler_factory,
         profiler.stop()
     # discard this __profile__ function from the result.
     profiler.stats.discard_child(frame.f_code)
-    if dump_filename is None:
+    if dump_filename is None and flamegraph_filename is None:
         try:
             profiler.run_viewer(get_title(filename), mono=mono)
         except KeyboardInterrupt:
             pass
     else:
-        profiler.dump(dump_filename, pickle_protocol)
+        if dump_filename:
+            profiler.dump(dump_filename, pickle_protocol)
 
-        click.echo('To view statistics:')
-        click.echo('  $ profiling view ', nl=False)
-        click.secho(dump_filename, underline=True)
+            click.echo('To view statistics:')
+            click.echo('  $ profiling view ', nl=False)
+            click.secho(dump_filename, underline=True)
+
+        if flamegraph_filename:
+            profiler.save_as_flamegraph(flamegraph_filename)
+
+            click.echo('To get a flamegraph image:')
+            click.echo('  $ flamegraph.pl {} > result.svg'.format(
+                flamegraph_filename))
 
 
 class ProfilingCommand(click.Command):
@@ -579,14 +593,15 @@ class ProfilingCommand(click.Command):
 @profiler_options
 @onetime_profiler_options
 @viewer_options
+@flamegraph_options
 def profile(script, argv, profiler_factory,
-            pickle_protocol, dump_filename, mono):
+            pickle_protocol, dump_filename, mono, flamegraph_filename):
     """Profile a Python script."""
     filename, code, globals_ = script
     sys.argv[:] = [filename] + list(argv)
     __profile__(filename, code, globals_, profiler_factory,
                 pickle_protocol=pickle_protocol, dump_filename=dump_filename,
-                mono=mono)
+                mono=mono, flamegraph_filename=flamegraph_filename)
 
 
 @cli.command('live-profile', aliases=['live'], cls=ProfilingCommand)
@@ -741,9 +756,10 @@ def view(src, mono):
 @profiler_options
 @onetime_profiler_options
 @viewer_options
+@flamegraph_options
 def timeit_profile(stmt, number, repeat, setup,
                    profiler_factory, pickle_protocol, dump_filename, mono,
-                   **_ignored):
+                   flamegraph_filename, **_ignored):
     """Profile a Python statement like timeit."""
     del _ignored
     globals_ = {}
@@ -765,12 +781,11 @@ def timeit_profile(stmt, number, repeat, setup,
                    'STATEMENT', 'exec')
     __profile__(stmt, code, globals_, profiler_factory,
                 pickle_protocol=pickle_protocol, dump_filename=dump_filename,
-                mono=mono)
+                mono=mono, flamegraph_filename=flamegraph_filename)
 
 
 # Deprecated.
 main = cli
-
 
 if __name__ == '__main__':
     cli(prog_name='python -m profiling')

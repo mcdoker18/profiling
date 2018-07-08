@@ -15,6 +15,7 @@ except ImportError:
     import pickle
 import time
 
+from profiling import flamegraph
 from profiling.stats import RecordingStatistics
 from profiling.utils import frame_stack, Runnable
 from profiling.viewer import StatisticsTable, StatisticsViewer
@@ -84,6 +85,16 @@ class Profiler(Runnable):
 
         with open(dump_filename, 'wb') as f:
             pickle.dump((self.__class__, result), f, pickle_protocol)
+
+    def save_as_flamegraph(self, file_path):
+        """Convert stats obj to flamegraph format and save to the file
+
+        :param file_path: path to a file
+        :type file_path: str
+        """
+
+        with open(file_path, 'w') as f:
+            f.write(flamegraph.convert(self.stats))
 
     def make_viewer(self, title=None, at=None):
         """Makes a statistics viewer from the profiling result.

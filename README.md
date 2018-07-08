@@ -91,6 +91,17 @@ And also run a client for the server by the `view` subcommand:
 $ profiling view 127.0.0.1:8912
 ```
 
+Flamegraph integration
+----------------------
+
+Flame graphs are a visualization of profiled software, allowing the most 
+frequent code-paths to be identified quickly and accurately. [Read more](https://github.com/brendangregg/FlameGraph).
+
+```bash
+$ profiling --flamegraph=your-program.out your-program.py
+$ flamegraph.pl your-program.out > your-program.svg
+```
+
 Statistical Profiling
 ---------------------
 
@@ -149,6 +160,9 @@ with profiler:
 profiler.run_viewer()
 # or save profile data to file
 profiler.dump('path/to/file')
+# and save to flamegraph format
+profiler.save_as_flamegraph('path/to/file')
+
 ```
 
 Viewer Key Bindings
